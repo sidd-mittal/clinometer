@@ -60,6 +60,13 @@ struct ContentView: View {
     @State private var roll: Double = 0.0
     @State private var pitch: Double = 0.0
     @State private var yaw: Double = 0.0
+    
+    @State private var showingPopup = false
+    @State private var distanceFromTree = ""
+    @State private var angleToTopOfTree = ""
+    @State private var angleToBottomOfTree = ""
+    @State private var calculatedHeight = 0.0
+    
     private var motion = CMMotionManager()
     private let queue = OperationQueue()
     private let rollThreshold = 0.4
@@ -89,7 +96,54 @@ struct ContentView: View {
                 Text(isDeviceLevel(roll) ? "Aligned" : "Align the device")
                     .foregroundColor(.white)
                     .bold()
+                Text("Calculated Height: \(calculatedHeight, specifier: "%.2f") units")
+                    .foregroundColor(.white)
+                    .bold()
             }.padding()
+            
+            VStack {
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        self.showingPopup = !self.showingPopup
+                    }) {
+                        Image(systemName: "plus.circle.fill")
+                            .resizable()
+                            .frame(width: 30, height: 30)
+                            .padding()
+                    }
+                }
+                Spacer()
+            }
+
+            if showingPopup {
+                VStack(spacing: 30) {
+                    TextField("Distance from tree", text: $distanceFromTree)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .padding()
+                    TextField("Angle to top of tree", text: $angleToTopOfTree)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .padding()
+                    TextField("Angle to bottom of tree", text: $angleToBottomOfTree)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .padding()
+                    
+                    Button("Calculate") {
+                        calculateTreeHeight()
+                        self.showingPopup = false
+                        distanceFromTree = ""
+                        angleToTopOfTree = ""
+                        angleToBottomOfTree = ""
+                    }
+                    .padding()
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .clipShape(Capsule())
+                }
+                .frame(width: 300, height: 400)
+                .background(Color.white)
+                .cornerRadius(20).shadow(radius: 20)
+            }
         }
         .onAppear() {
             self.startQueuedUpdates()
@@ -98,6 +152,20 @@ struct ContentView: View {
     
     private func isDeviceLevel(_ roll: Double) -> Bool {
         abs(roll) < rollThreshold || abs(roll - .pi) < rollThreshold
+    }
+    
+    private func calculateTreeHeight() {
+        guard let distance = Double(distanceFromTree),
+              let angleTop = Double(angleToTopOfTree),
+              let angleBottom = Double(angleToBottomOfTree) else {
+            return
+        }
+
+        let angleTopRadians = angleTop * (.pi / 180)
+        let angleBottomRadians = angleBottom * (.pi / 180)
+
+        let height = distance * tan(angleTopRadians) + distance * tan(angleBottomRadians)
+        self.calculatedHeight = height
     }
     
     func startQueuedUpdates() {
